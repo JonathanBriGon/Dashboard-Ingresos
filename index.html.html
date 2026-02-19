@@ -161,6 +161,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .table-container {
@@ -197,6 +199,7 @@
             border-radius: 4px;
             font-size: 12px;
             font-weight: 500;
+            display: inline-block;
         }
 
         .loader-overlay {
@@ -221,6 +224,15 @@
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hidden { display: none !important; }
+        
+        /* Mensaje de error */
+        #error-msg {
+            color: var(--primary);
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            max-width: 400px;
+        }
     </style>
 </head>
 <body>
@@ -228,7 +240,8 @@
     <!-- LOADER -->
     <div id="loader" class="loader-overlay">
         <div class="spinner"></div>
-        <p>Cargando datos de Tabla de Ingresos Sportlead...</p>
+        <p>Conectando con Google Sheets...</p>
+        <p id="error-msg" class="hidden"></p>
     </div>
 
     <div class="dashboard-container">
@@ -268,7 +281,7 @@
                         <option value="all">Todos los Canales</option>
                     </select>
                 </div>
-                <button class="btn btn-outline" onclick="app.exportCSV()">⬇ Exportar</button>
+                <button class="btn btn-outline" onclick="app.exportCSV()">⬇ Exportar CSV</button>
                 <button class="btn btn-primary" onclick="app.refreshData()">↻ Actualizar</button>
             </div>
         </header>
@@ -288,19 +301,19 @@
             <div class="card">
                 <div class="kpi-title">Ticket Promedio</div>
                 <div class="kpi-value" id="kpi-aov">0 €</div>
-                <div class="kpi-trend" style="color:var(--text-gray)">Por factura</div>
+                <div class="kpi-trend" style="color:var(--text-gray)">Por factura/cliente</div>
             </div>
             <div class="card">
-                <div class="kpi-title">Total Clientes</div>
+                <div class="kpi-title">Total Registros</div>
                 <div class="kpi-value" id="kpi-clients">0</div>
-                <div class="kpi-trend trend-up">↗ Activos</div>
+                <div class="kpi-trend trend-up">↗ Operaciones</div>
             </div>
         </div>
 
         <!-- CHARTS ROW 1 -->
         <div class="charts-grid">
             <div class="card col-span-8">
-                <div class="kpi-title">Tendencia de Ingresos Mensuales</div>
+                <div class="kpi-title">Tendencia de Ingresos</div>
                 <div class="chart-container">
                     <canvas id="chart-timeline"></canvas>
                 </div>
@@ -340,7 +353,7 @@
             <div class="table-header">
                 <h3 style="font-weight: 600;">Detalle de Facturación</h3>
                 <div class="input-group">
-                    <input type="text" id="tableSearch" placeholder="Buscar cliente..." onkeyup="app.handleSearch()">
+                    <input type="text" id="tableSearch" placeholder="Buscar cliente o producto..." style="width:250px" onkeyup="app.handleSearch()">
                 </div>
             </div>
             <div class="table-container">
@@ -373,54 +386,16 @@
          * --------------------------------------------------------------------------
          */
         const CONFIG = {
-            // MODO DE PRUEBA: Cambia a "false" para conectar a tu Google Sheet real
-            USE_MOCK_DATA: false, 
+            USE_MOCK_DATA: false, // <-- Forzado a FALSE para leer de la URL
             
-            // PEGA AQUÍ LA URL EXPORTABLE EN FORMATO CSV DE TU GOOGLE SHEET
+            // TU ENLACE EXACTO:
             GOOGLE_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSIIpCwkUOAKuojoA9_RHpCUcCwMV9U3plRwC0BTv_6j7AsqD5z-7pcmWAZ77iUexINIMnI5y2Su38c/pub?gid=0&single=true&output=csv', 
             
             COLORS: {
                 primary: '#D32F2F',
                 primaryLight: 'rgba(211, 47, 47, 0.1)',
                 secondary: '#1E293B',
-                palette: ['#D32F2F', '#1976D2', '#388E3C', '#FBC02D', '#8E24AA', '#F57C00', '#0284C7', '#10B981']
-            }
-        };
-
-        /**
-         * --------------------------------------------------------------------------
-         * MOCK DATA (Simula las columnas exactas de "Tabla de Ingresos Sportlead")
-         * --------------------------------------------------------------------------
-         */
-        const MockDataGenerator = {
-            generate(count = 150) {
-                const data = [];
-                const deportes = ["Balonmano", "Futbol sala", "Baloncesto", "Waterpolo", "Futbol", "Futbol playa", "Boccia"];
-                const canales = ["Tienda Online", "Whatsapp", "Distribuidor"];
-                const productos = [
-                    { name: "Pizarra Basic", price: 35.45 }, { name: "Pizarra Premium", price: 165 }, 
-                    { name: "Pizarra Advance", price: 65 }, { name: "Pizarra mini", price: 25 },
-                    { name: "Ficha 10 mm rojo", price: 0.50 }, { name: "Bolsa Basic", price: 15 }
-                ];
-
-                for (let i = 0; i < count; i++) {
-                    const d = new Date(new Date().setMonth(new Date().getMonth() - Math.floor(Math.random() * 12)));
-                    const dateStr = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
-                    const prod = productos[Math.floor(Math.random() * productos.length)];
-                    const qty = Math.floor(Math.random() * 3) + 1;
-                    
-                    data.push({
-                        'Fecha': dateStr,
-                        'Factura': `2600${Math.floor(Math.random() * 99)}`,
-                        'Cliente': `Cliente Prueba ${Math.floor(Math.random() * 20)}`,
-                        'Producto': prod.name,
-                        'Deporte': deportes[Math.floor(Math.random() * deportes.length)],
-                        'Canal de Venta': canales[Math.floor(Math.random() * canales.length)],
-                        'Cantidad Vendida': qty,
-                        'Ingreso Total (€)': (qty * prod.price).toString().replace('.', ',')
-                    });
-                }
-                return data;
+                palette: ['#D32F2F', '#1976D2', '#388E3C', '#FBC02D', '#8E24AA', '#F57C00', '#0284C7', '#10B981', '#64748b']
             }
         };
 
@@ -436,76 +411,111 @@
 
             async init() {
                 this.toggleLoader(true);
+                const errorMsg = document.getElementById('error-msg');
+                errorMsg.classList.add('hidden');
+
                 try {
                     await this.fetchData();
+                    if(this.data.length === 0) {
+                        throw new Error("El documento cargó pero no se encontraron filas válidas de datos. Verifica los encabezados.");
+                    }
                     this.populateFilters();
                     this.applyFilters();
-                } catch (error) {
-                    console.error("Error:", error);
-                    alert("Error cargando los datos. Asegúrate de que el enlace CSV es correcto.");
-                } finally {
                     this.toggleLoader(false);
+                } catch (error) {
+                    console.error("Error cargando datos:", error);
+                    errorMsg.textContent = "Error: " + error.message;
+                    errorMsg.classList.remove('hidden');
                 }
             },
 
             async fetchData() {
-                if (CONFIG.USE_MOCK_DATA) {
-                    const rawData = MockDataGenerator.generate(200);
-                    this.data = this.normalizeData(rawData);
-                    return Promise.resolve();
-                } else {
-                    return new Promise((resolve, reject) => {
-                        Papa.parse(CONFIG.GOOGLE_SHEET_CSV_URL, {
-                            download: true,
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: (results) => {
-                                this.data = this.normalizeData(results.data);
-                                resolve();
-                            },
-                            error: (err) => reject(err)
-                        });
+                return new Promise((resolve, reject) => {
+                    Papa.parse(CONFIG.GOOGLE_SHEET_CSV_URL, {
+                        download: true,
+                        header: true,
+                        skipEmptyLines: true,
+                        // Limpia espacios en los nombres de las columnas
+                        transformHeader: function(header) {
+                            return header.trim();
+                        },
+                        complete: (results) => {
+                            if (results.errors.length > 0 && results.data.length === 0) {
+                                reject(new Error("No se pudo leer el CSV. Asegúrate de que el enlace sea público."));
+                                return;
+                            }
+                            this.data = this.normalizeData(results.data);
+                            resolve();
+                        },
+                        error: (err) => reject(new Error("Fallo de red al conectar con Google Sheets. " + err.message))
                     });
-                }
+                });
             },
 
-            // Normaliza fechas (DD/MM/YYYY a YYYY-MM-DD) y números (con comas a flotantes)
+            // Normalizador "Inteligente": Busca datos por palabras clave
             normalizeData(rawData) {
                 return rawData.map(row => {
-                    // Parseo Fecha
-                    let isoDate = row.Fecha;
-                    if (typeof row.Fecha === 'string' && row.Fecha.includes('/')) {
-                        const parts = row.Fecha.split('/');
+                    
+                    const findVal = (keywords) => {
+                        const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
+                        return key ? row[key] : null;
+                    };
+
+                    // FECHA
+                    const rawFecha = findVal(['fecha', 'date', 'día']) || '';
+                    let isoDate = rawFecha;
+                    if (typeof rawFecha === 'string' && rawFecha.includes('/')) {
+                        const parts = rawFecha.split('/');
                         if (parts.length === 3) isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    } else if (typeof rawFecha === 'string' && rawFecha.includes('-')) {
+                        isoDate = rawFecha; 
                     }
 
-                    // Parseo Numérico de Euros (soporta comas europeas)
-                    const parseEuro = (val) => {
-                        if (!val) return 0;
+                    // PARSEO NUMÉRICO ROBUSTO (Elimina €, $, espacios y arregla comas)
+                    const parseNum = (val) => {
+                        if (val === null || val === undefined || val === '') return 0;
                         if (typeof val === 'number') return val;
-                        return Number(val.replace(/\./g, '').replace(',', '.')) || 0;
+                        let s = String(val).replace(/[^0-9.,-]/g, '');
+                        if (s.includes('.') && s.includes(',')) {
+                            s = s.replace(/\./g, '').replace(',', '.');
+                        } else if (s.includes(',')) {
+                            s = s.replace(',', '.');
+                        }
+                        return Number(s) || 0;
                     };
 
+                    // MAPEO DE COLUMNAS
+                    const total = parseNum(findVal(['ingreso', 'total', 'importe', 'precio', '€']));
+                    const cantidad = parseNum(findVal(['cantidad', 'cant', 'uds', 'unidades']));
+                    const deporte = (findVal(['deporte', 'sport', 'categoría']) || 'Sin asignar').toString().trim();
+                    const canal = (findVal(['canal', 'vía', 'origen', 'venta']) || 'Sin asignar').toString().trim();
+                    const cliente = (findVal(['cliente', 'nombre', 'comprador']) || 'Desconocido').toString().trim();
+                    const producto = (findVal(['producto', 'artículo', 'item']) || 'Varios').toString().trim();
+                    const factura = (findVal(['factura', 'pedido', 'orden', 'id']) || '-').toString().trim();
+
                     return {
-                        ...row,
                         FechaIso: isoDate,
-                        Deporte: row.Deporte?.trim() || 'Sin asignar',
-                        'Canal de Venta': row['Canal de Venta']?.trim() || 'Sin asignar',
-                        _TotalParsed: parseEuro(row['Ingreso Total (€)']),
-                        _CantParsed: parseEuro(row['Cantidad Vendida'])
+                        FechaFormateada: rawFecha || '-',
+                        Deporte: deporte,
+                        Canal: canal,
+                        Cliente: cliente,
+                        Producto: producto,
+                        Factura: factura,
+                        _TotalParsed: total,
+                        _CantParsed: cantidad
                     };
-                }).sort((a, b) => new Date(b.FechaIso) - new Date(a.FechaIso));
+                })
+                .filter(r => r._TotalParsed !== 0 || r._CantParsed !== 0 || r.Producto !== 'Varios')
+                .sort((a, b) => new Date(b.FechaIso || 0) - new Date(a.FechaIso || 0));
             },
 
             populateFilters() {
-                // Filtro Deportes
                 const deportes = [...new Set(this.data.map(i => i.Deporte))].filter(d => d !== 'Sin asignar').sort();
                 const depSelect = document.getElementById('deporteFilter');
                 depSelect.innerHTML = '<option value="all">Todos los Deportes</option>';
                 deportes.forEach(d => depSelect.add(new Option(d, d)));
 
-                // Filtro Canales
-                const canales = [...new Set(this.data.map(i => i['Canal de Venta']))].filter(c => c !== 'Sin asignar').sort();
+                const canales = [...new Set(this.data.map(i => i.Canal))].filter(c => c !== 'Sin asignar').sort();
                 const canSelect = document.getElementById('canalFilter');
                 canSelect.innerHTML = '<option value="all">Todos los Canales</option>';
                 canales.forEach(c => canSelect.add(new Option(c, c)));
@@ -520,13 +530,16 @@
                 
                 this.filteredData = this.data.filter(row => {
                     let dateValid = true;
-                    if (dateRange !== 'all' && row.FechaIso) {
+                    if (dateRange !== 'all' && row.FechaIso && row.FechaIso.includes('-')) {
                         const limitDate = new Date();
                         limitDate.setDate(now.getDate() - parseInt(dateRange));
-                        dateValid = new Date(row.FechaIso) >= limitDate;
+                        const rowD = new Date(row.FechaIso);
+                        if (!isNaN(rowD)) {
+                            dateValid = rowD >= limitDate;
+                        }
                     }
                     const depValid = depFilter === 'all' || row.Deporte === depFilter;
-                    const canValid = canFilter === 'all' || row['Canal de Venta'] === canFilter;
+                    const canValid = canFilter === 'all' || row.Canal === canFilter;
 
                     return dateValid && depValid && canValid;
                 });
@@ -539,8 +552,8 @@
             handleSearch() {
                 const query = document.getElementById('tableSearch').value.toLowerCase();
                 document.querySelectorAll('#tableBody tr').forEach(row => {
-                    const client = row.children[2].textContent.toLowerCase();
-                    row.style.display = client.includes(query) ? '' : 'none';
+                    const text = (row.children[2].textContent + " " + row.children[3].textContent).toLowerCase();
+                    row.style.display = text.includes(query) ? '' : 'none';
                 });
             },
 
@@ -554,33 +567,33 @@
                 const totalRevenue = this.filteredData.reduce((sum, row) => sum + row._TotalParsed, 0);
                 const totalUnits = this.filteredData.reduce((sum, row) => sum + row._CantParsed, 0);
                 
-                // Calcular tickets en base a Facturas únicas
-                const facturas = new Set(this.filteredData.map(r => r.Factura).filter(Boolean));
+                const facturas = new Set(this.filteredData.map(r => r.Factura).filter(f => f !== '-'));
                 const totalOrders = facturas.size > 0 ? facturas.size : this.filteredData.length;
                 
-                const uniqueClients = new Set(this.filteredData.map(r => r.Cliente)).size;
                 const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
                 this.animateValue("kpi-revenue", totalRevenue, true);
                 this.animateValue("kpi-units", totalUnits);
                 this.animateValue("kpi-aov", avgTicket, true);
-                this.animateValue("kpi-clients", uniqueClients);
+                this.animateValue("kpi-clients", this.filteredData.length); 
             },
 
             renderCharts() {
-                // Preparar Data
-                const byMonth = this.groupBy(this.filteredData, r => r.FechaIso ? r.FechaIso.substring(0,7) : 'N/A', '_TotalParsed');
-                const sortedMonths = Object.keys(byMonth).filter(k=>k!=='N/A').sort();
+                const byMonth = this.groupBy(this.filteredData, r => {
+                    if(!r.FechaIso || !r.FechaIso.includes('-')) return 'Desconocido';
+                    return r.FechaIso.substring(0,7); 
+                }, '_TotalParsed');
+                
+                const sortedMonths = Object.keys(byMonth).filter(k=>k!=='Desconocido').sort();
                 
                 const byDeporte = this.groupBy(this.filteredData, 'Deporte', '_TotalParsed');
-                const byCanal = this.groupBy(this.filteredData, 'Canal de Venta', '_TotalParsed');
+                const byCanal = this.groupBy(this.filteredData, 'Canal', '_TotalParsed');
                 const byProduct = this.groupBy(this.filteredData, 'Producto', '_TotalParsed');
                 const byClient = this.groupBy(this.filteredData, 'Cliente', '_TotalParsed');
 
                 const topProducts = Object.entries(byProduct).sort((a,b) => b[1] - a[1]).slice(0, 5);
                 const topClients = Object.entries(byClient).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
-                // Gráfico 1: Tendencia
                 this.createOrUpdateChart('chart-timeline', 'line', {
                     labels: sortedMonths,
                     datasets: [{
@@ -588,33 +601,29 @@
                         data: sortedMonths.map(m => byMonth[m]),
                         borderColor: CONFIG.COLORS.primary,
                         backgroundColor: CONFIG.COLORS.primaryLight,
-                        fill: true, tension: 0.3
+                        fill: true, tension: 0.3, pointRadius: 4
                     }]
                 });
 
-                // Gráfico 2: Deporte
                 this.createOrUpdateChart('chart-deporte', 'doughnut', {
                     labels: Object.keys(byDeporte).filter(k=>k!=='Sin asignar'),
                     datasets: [{ data: Object.values(byDeporte), backgroundColor: CONFIG.COLORS.palette }]
                 });
 
-                // Gráfico 3: Productos
                 this.createOrUpdateChart('chart-products', 'bar', {
-                    labels: topProducts.map(i => i[0].substring(0, 15) + '...'),
+                    labels: topProducts.map(i => i[0].length > 18 ? i[0].substring(0, 15) + '...' : i[0]),
                     datasets: [{ label: 'Ingresos (€)', data: topProducts.map(i => i[1]), backgroundColor: CONFIG.COLORS.primary }]
                 });
 
-                // Gráfico 4: Clientes
                 this.createOrUpdateChart('chart-clients', 'bar', {
-                    labels: topClients.map(i => i[0].substring(0, 15) + '...'),
+                    labels: topClients.map(i => i[0].length > 18 ? i[0].substring(0, 15) + '...' : i[0]),
                     datasets: [{ label: 'Facturación (€)', data: topClients.map(i => i[1]), backgroundColor: CONFIG.COLORS.secondary }],
                     indexAxis: 'y'
                 });
 
-                // Gráfico 5: Canal de Venta
                 this.createOrUpdateChart('chart-canal', 'pie', {
                     labels: Object.keys(byCanal).filter(k=>k!=='Sin asignar'),
-                    datasets: [{ data: Object.values(byCanal), backgroundColor: [CONFIG.COLORS.primary, CONFIG.COLORS.secondary, '#388E3C'] }]
+                    datasets: [{ data: Object.values(byCanal), backgroundColor: [CONFIG.COLORS.primary, CONFIG.COLORS.secondary, '#388E3C', '#FBC02D', '#0284C7'] }]
                 });
             },
 
@@ -638,14 +647,14 @@
                 this.filteredData.slice(0, 100).forEach(row => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${row.Fecha || '-'}</td>
-                        <td style="color:var(--text-gray)">#${row.Factura || '-'}</td>
-                        <td style="font-weight:500">${row.Cliente || '-'}</td>
-                        <td>${row.Producto || '-'}</td>
+                        <td style="white-space:nowrap">${row.FechaFormateada}</td>
+                        <td style="color:var(--text-gray); font-size:12px">${row.Factura}</td>
+                        <td style="font-weight:500">${row.Cliente}</td>
+                        <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${row.Producto}">${row.Producto}</td>
                         <td><span class="tag">${row.Deporte}</span></td>
-                        <td>${row['Canal de Venta']}</td>
-                        <td>${row._CantParsed}</td>
-                        <td style="font-weight:600; color:var(--primary)">${row._TotalParsed.toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
+                        <td>${row.Canal}</td>
+                        <td style="text-align:center">${row._CantParsed}</td>
+                        <td style="font-weight:600; color:var(--primary); text-align:right">${row._TotalParsed.toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -669,17 +678,28 @@
             toggleLoader(show) { document.getElementById('loader').classList.toggle('hidden', !show); },
 
             exportCSV() {
-                const csv = Papa.unparse(this.filteredData);
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const exportData = this.filteredData.map(r => ({
+                    Fecha: r.FechaFormateada,
+                    Factura: r.Factura,
+                    Cliente: r.Cliente,
+                    Producto: r.Producto,
+                    Deporte: r.Deporte,
+                    'Canal de Venta': r.Canal,
+                    Cantidad: r._CantParsed,
+                    'Total (€)': r._TotalParsed.toString().replace('.', ',')
+                }));
+                const csv = Papa.unparse(exportData);
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); 
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `sportlead_reporte_${new Date().toISOString().slice(0,10)}.csv`;
+                link.download = `sportlead_filtrado_${new Date().toISOString().slice(0,10)}.csv`;
                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
             },
             
             refreshData() { this.init(); }
         };
 
+        // Iniciar al cargar
         document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
