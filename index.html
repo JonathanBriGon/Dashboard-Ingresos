@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportlead | Executive Dashboard</title>
+    
+    <!-- Fuentes: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #D32F2F; 
+            --primary-dark: #B71C1C;
+            --primary-light: #FFCDD2;
+            --secondary: #1E293B; 
+            --text-gray: #64748B;
+            --bg-body: #F1F5F9;
+            --bg-card: #FFFFFF;
+            --border: #E2E8F0;
+            --success: #10B981;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--secondary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand h1 {
+            font-weight: 700;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand span { color: var(--primary); }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: white; border: 1px solid var(--border); color: var(--secondary); }
+        .btn-outline:hover { background: #f8fafc; border-color: var(--text-gray); }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .input-group input, .input-group select {
+            border: none;
+            outline: none;
+            padding: 0.4rem;
+            font-family: inherit;
+            color: var(--secondary);
+            background: transparent;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: transform 0.2s;
+        }
+
+        .card:hover { transform: translateY(-2px); }
+
+        .kpi-title { font-size: 0.85rem; color: var(--text-gray); font-weight: 500; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 1.8rem; font-weight: 700; color: var(--secondary); }
+        .kpi-trend { font-size: 0.8rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 5px; }
+        .trend-up { color: var(--success); }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .col-span-8 { grid-column: span 8; }
+        .col-span-4 { grid-column: span 4; }
+
+        @media (max-width: 1024px) {
+            .col-span-8, .col-span-4 { grid-column: span 12; }
+        }
+
+        .table-section {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        
+        thead th {
+            background: #F8FAFC;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-gray);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tbody td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--secondary);
+        }
+
+        tbody tr:hover { background: #F8FAFC; }
+
+        .tag {
+            padding: 4px 8px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .loader-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--primary-light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+        
+        /* Mensaje de error */
+        #error-msg {
+            color: var(--primary);
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOADER -->
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <p>Conectando con Google Sheets...</p>
+        <p id="error-msg" class="hidden"></p>
+    </div>
+
+    <div class="dashboard-container">
+        
+        <!-- HEADER -->
+        <header>
+            <div class="brand">
+                <h1>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="4" width="20" height="16" rx="2" stroke="#D32F2F" stroke-width="2"/>
+                        <path d="M7 12H17" stroke="#D32F2F" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M12 8L12 16" stroke="#D32F2F" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Sportlead <span>Analytics</span>
+                </h1>
+            </div>
+
+            <div class="controls">
+                <div class="input-group">
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Rango:</span>
+                    <select id="dateRangeFilter" onchange="app.handleFilterChange()">
+                        <option value="all">Histórico Completo</option>
+                        <option value="7">Última semana (7 días)</option>
+                        <option value="14">Últimas 2 semanas (14 días)</option>
+                        <option value="30">Último mes (30 días)</option>
+                        <option value="90">Últimos 3 meses</option>
+                        <option value="365">Último Año</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Categoría:</span>
+                    <select id="categoriaFilter" onchange="app.handleFilterChange()">
+                        <option value="all">Todas las categorías</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Producto:</span>
+                    <select id="productoFilter" onchange="app.handleFilterChange()">
+                        <option value="all">Todos los Productos</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Canal:</span>
+                    <select id="canalFilter" onchange="app.handleFilterChange()">
+                        <option value="all">Todos los Canales</option>
+                    </select>
+                </div>
+                <button class="btn btn-outline" onclick="app.exportCSV()">⬇ Exportar CSV</button>
+                <button class="btn btn-primary" onclick="app.refreshData()">↻ Actualizar</button>
+            </div>
+        </header>
+
+        <!-- KPI GRID -->
+        <div class="kpi-grid">
+            <div class="card">
+                <div class="kpi-title">Ingresos Totales</div>
+                <div class="kpi-value" id="kpi-revenue">0 €</div>
+                <div class="kpi-trend trend-up">↗ Ventas netas</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Unidades Vendidas</div>
+                <div class="kpi-value" id="kpi-units">0</div>
+                <div class="kpi-trend" style="color:var(--text-gray)">Total histórico</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Ticket Promedio</div>
+                <div class="kpi-value" id="kpi-aov">0 €</div>
+                <div class="kpi-trend" style="color:var(--text-gray)">Por factura/cliente</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Total Registros</div>
+                <div class="kpi-value" id="kpi-clients">0</div>
+                <div class="kpi-trend trend-up">↗ Operaciones</div>
+            </div>
+        </div>
+
+        <!-- CHARTS ROW 1 -->
+        <div class="charts-grid">
+            <div class="card col-span-8">
+                <div class="kpi-title">Tendencia de Ingresos</div>
+                <div class="chart-container">
+                    <canvas id="chart-timeline"></canvas>
+                </div>
+            </div>
+            <div class="card col-span-4">
+                <div class="kpi-title">Ingresos por Categoría</div>
+                <div class="chart-container">
+                    <canvas id="chart-categoria"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARTS ROW 2 -->
+        <div class="charts-grid">
+             <div class="card col-span-4">
+                <div class="kpi-title">Top Productos (Ingresos)</div>
+                <div class="chart-container">
+                    <canvas id="chart-products"></canvas>
+                </div>
+            </div>
+            <div class="card col-span-4">
+                <div class="kpi-title">Top Clientes (Facturación)</div>
+                <div class="chart-container">
+                    <canvas id="chart-clients"></canvas>
+                </div>
+            </div>
+            <div class="card col-span-4">
+                <div class="kpi-title">Ventas por Canal</div>
+                <div class="chart-container">
+                    <canvas id="chart-canal"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATA TABLE -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3 style="font-weight: 600;">Detalle de Facturación</h3>
+                <div class="input-group">
+                    <input type="text" id="tableSearch" placeholder="Buscar cliente o producto..." style="width:250px" onkeyup="app.handleSearch()">
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Factura</th>
+                            <th>Cliente</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Canal</th>
+                            <th>Cant.</th>
+                            <th>Total (€)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- JS Insertará filas aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * --------------------------------------------------------------------------
+         * CONFIGURACIÓN
+         * --------------------------------------------------------------------------
+         */
+        const CONFIG = {
+            USE_MOCK_DATA: false, 
+            
+            // NUEVO ENLACE: Usa la API de visualización de Google para evitar el bloqueo CORS
+            GOOGLE_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSIIpCwkUOAKuojoA9_RHpCUcCwMV9U3plRwC0BTv_6j7AsqD5z-7pcmWAZ77iUexINIMnI5y2Su38c/pub?output=csv', 
+            
+            COLORS: {
+                primary: '#D32F2F',
+                primaryLight: 'rgba(211, 47, 47, 0.1)',
+                secondary: '#1E293B',
+                palette: ['#D32F2F', '#1976D2', '#388E3C', '#FBC02D', '#8E24AA', '#F57C00', '#0284C7', '#10B981', '#64748b']
+            }
+        };
+
+        /**
+         * --------------------------------------------------------------------------
+         * CONTROLADOR PRINCIPAL
+         * --------------------------------------------------------------------------
+         */
+        const app = {
+            data: [], 
+            filteredData: [], 
+            charts: {}, 
+
+            async init() {
+                this.toggleLoader(true);
+                const errorMsg = document.getElementById('error-msg');
+                errorMsg.classList.add('hidden');
+
+                try {
+                    await this.fetchData();
+                    if(this.data.length === 0) {
+                        throw new Error("El documento cargó pero no se encontraron filas válidas de datos. Verifica los encabezados.");
+                    }
+                    this.populateFilters();
+                    this.applyFilters();
+                    this.toggleLoader(false);
+                } catch (error) {
+                    console.error("Error cargando datos:", error);
+                    errorMsg.textContent = "Error: " + error.message;
+                    errorMsg.classList.remove('hidden');
+                }
+            },
+
+            async fetchData() {
+                return new Promise((resolve, reject) => {
+                    Papa.parse(CONFIG.GOOGLE_SHEET_CSV_URL, {
+                        download: true,
+                        header: true,
+                        skipEmptyLines: true,
+                        // Limpia espacios en los nombres de las columnas
+                        transformHeader: function(header) {
+                            return header.trim();
+                        },
+                        complete: (results) => {
+                            if (results.errors.length > 0 && results.data.length === 0) {
+                                reject(new Error("No se pudo leer el CSV. Asegúrate de que el enlace sea público."));
+                                return;
+                            }
+                            this.data = this.normalizeData(results.data);
+                            resolve();
+                        },
+                        error: (err) => reject(new Error("Fallo de red al conectar con Google Sheets. " + err.message))
+                    });
+                });
+            },
+
+            // Normalizador "Inteligente": Busca datos por palabras clave
+            normalizeData(rawData) {
+                return rawData.map(row => {
+                    
+                    const findVal = (keywords) => {
+                        const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
+                        return key ? row[key] : null;
+                    };
+
+                    // FECHA
+                    const rawFecha = findVal(['fecha', 'date', 'día']) || '';
+                    let isoDate = rawFecha;
+                    if (typeof rawFecha === 'string' && rawFecha.includes('/')) {
+                        const parts = rawFecha.split('/');
+                        if (parts.length === 3) isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    } else if (typeof rawFecha === 'string' && rawFecha.includes('-')) {
+                        isoDate = rawFecha; 
+                    }
+
+                    // PARSEO NUMÉRICO ROBUSTO (Elimina €, $, espacios y arregla comas)
+                    const parseNum = (val) => {
+                        if (val === null || val === undefined || val === '') return 0;
+                        if (typeof val === 'number') return val;
+                        let s = String(val).replace(/[^0-9.,-]/g, '');
+                        if (s.includes('.') && s.includes(',')) {
+                            s = s.replace(/\./g, '').replace(',', '.');
+                        } else if (s.includes(',')) {
+                            s = s.replace(',', '.');
+                        }
+                        return Number(s) || 0;
+                    };
+
+                    // MAPEO DE COLUMNAS
+                    const total = parseNum(findVal(['ingreso', 'total', 'importe', 'precio', '€']));
+                    const cantidad = parseNum(findVal(['cantidad', 'cant', 'uds', 'unidades']));
+                    const categoria = (findVal(['categoría', 'categoria', 'deporte', 'sport']) || 'Sin asignar').toString().trim();
+                    const canal = (findVal(['canal', 'vía', 'origen', 'venta']) || 'Sin asignar').toString().trim();
+                    const cliente = (findVal(['cliente', 'nombre', 'comprador']) || 'Desconocido').toString().trim();
+                    const producto = (findVal(['producto', 'artículo', 'item']) || 'Varios').toString().trim();
+                    const factura = (findVal(['factura', 'pedido', 'orden', 'id']) || '-').toString().trim();
+
+                    return {
+                        FechaIso: isoDate,
+                        FechaFormateada: rawFecha || '-',
+                        Categoria: categoria,
+                        Canal: canal,
+                        Cliente: cliente,
+                        Producto: producto,
+                        Factura: factura,
+                        _TotalParsed: total,
+                        _CantParsed: cantidad
+                    };
+                })
+                .filter(r => r._TotalParsed !== 0 || r._CantParsed !== 0 || r.Producto !== 'Varios')
+                .sort((a, b) => new Date(b.FechaIso || 0) - new Date(a.FechaIso || 0));
+            },
+
+            populateFilters() {
+                const categorias = [...new Set(this.data.map(i => i.Categoria))].filter(d => d !== 'Sin asignar').sort();
+                const catSelect = document.getElementById('categoriaFilter');
+                catSelect.innerHTML = '<option value="all">Todas las categorías</option>';
+                categorias.forEach(d => catSelect.add(new Option(d, d)));
+
+                // Nuevo filtro de producto
+                const productos = [...new Set(this.data.map(i => i.Producto))].filter(p => p !== 'Varios').sort();
+                const prodSelect = document.getElementById('productoFilter');
+                prodSelect.innerHTML = '<option value="all">Todos los Productos</option>';
+                productos.forEach(p => prodSelect.add(new Option(p, p)));
+
+                const canales = [...new Set(this.data.map(i => i.Canal))].filter(c => c !== 'Sin asignar').sort();
+                const canSelect = document.getElementById('canalFilter');
+                canSelect.innerHTML = '<option value="all">Todos los Canales</option>';
+                canales.forEach(c => canSelect.add(new Option(c, c)));
+            },
+
+            applyFilters() {
+                const dateRange = document.getElementById('dateRangeFilter').value;
+                const catFilter = document.getElementById('categoriaFilter').value;
+                const prodFilter = document.getElementById('productoFilter').value;
+                const canFilter = document.getElementById('canalFilter').value;
+                
+                const now = new Date();
+                
+                this.filteredData = this.data.filter(row => {
+                    let dateValid = true;
+                    // Lógica para filtrar por fechas usando el "value" del HTML
+                    if (dateRange !== 'all' && row.FechaIso && row.FechaIso.includes('-')) {
+                        const limitDate = new Date();
+                        limitDate.setDate(now.getDate() - parseInt(dateRange));
+                        const rowD = new Date(row.FechaIso);
+                        if (!isNaN(rowD)) {
+                            dateValid = rowD >= limitDate;
+                        }
+                    }
+                    const catValid = catFilter === 'all' || row.Categoria === catFilter;
+                    const prodValid = prodFilter === 'all' || row.Producto === prodFilter;
+                    const canValid = canFilter === 'all' || row.Canal === canFilter;
+
+                    return dateValid && catValid && prodValid && canValid;
+                });
+
+                this.updateDashboard();
+            },
+
+            handleFilterChange() { this.applyFilters(); },
+
+            handleSearch() {
+                const query = document.getElementById('tableSearch').value.toLowerCase();
+                document.querySelectorAll('#tableBody tr').forEach(row => {
+                    const text = (row.children[2].textContent + " " + row.children[3].textContent).toLowerCase();
+                    row.style.display = text.includes(query) ? '' : 'none';
+                });
+            },
+
+            updateDashboard() {
+                this.renderKPIs();
+                this.renderCharts();
+                this.renderTable();
+            },
+
+            renderKPIs() {
+                const totalRevenue = this.filteredData.reduce((sum, row) => sum + row._TotalParsed, 0);
+                const totalUnits = this.filteredData.reduce((sum, row) => sum + row._CantParsed, 0);
+                
+                const facturas = new Set(this.filteredData.map(r => r.Factura).filter(f => f !== '-'));
+                const totalOrders = facturas.size > 0 ? facturas.size : this.filteredData.length;
+                
+                const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+                this.animateValue("kpi-revenue", totalRevenue, true);
+                this.animateValue("kpi-units", totalUnits);
+                this.animateValue("kpi-aov", avgTicket, true);
+                this.animateValue("kpi-clients", this.filteredData.length); 
+            },
+
+            renderCharts() {
+                const byMonth = this.groupBy(this.filteredData, r => {
+                    if(!r.FechaIso || !r.FechaIso.includes('-')) return 'Desconocido';
+                    return r.FechaIso.substring(0,7); 
+                }, '_TotalParsed');
+                
+                const sortedMonths = Object.keys(byMonth).filter(k=>k!=='Desconocido').sort();
+                
+                const byCategoria = this.groupBy(this.filteredData, 'Categoria', '_TotalParsed');
+                const byCanal = this.groupBy(this.filteredData, 'Canal', '_TotalParsed');
+                const byProduct = this.groupBy(this.filteredData, 'Producto', '_TotalParsed');
+                const byClient = this.groupBy(this.filteredData, 'Cliente', '_TotalParsed');
+
+                const topProducts = Object.entries(byProduct).sort((a,b) => b[1] - a[1]).slice(0, 5);
+                const topClients = Object.entries(byClient).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+                this.createOrUpdateChart('chart-timeline', 'line', {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Ingresos (€)',
+                        data: sortedMonths.map(m => byMonth[m]),
+                        borderColor: CONFIG.COLORS.primary,
+                        backgroundColor: CONFIG.COLORS.primaryLight,
+                        fill: true, tension: 0.3, pointRadius: 4
+                    }]
+                });
+
+                this.createOrUpdateChart('chart-categoria', 'doughnut', {
+                    labels: Object.keys(byCategoria).filter(k=>k!=='Sin asignar'),
+                    datasets: [{ data: Object.values(byCategoria), backgroundColor: CONFIG.COLORS.palette }]
+                });
+
+                this.createOrUpdateChart('chart-products', 'bar', {
+                    labels: topProducts.map(i => i[0].length > 18 ? i[0].substring(0, 15) + '...' : i[0]),
+                    datasets: [{ label: 'Ingresos (€)', data: topProducts.map(i => i[1]), backgroundColor: CONFIG.COLORS.primary }]
+                });
+
+                this.createOrUpdateChart('chart-clients', 'bar', {
+                    labels: topClients.map(i => i[0].length > 18 ? i[0].substring(0, 15) + '...' : i[0]),
+                    datasets: [{ label: 'Facturación (€)', data: topClients.map(i => i[1]), backgroundColor: CONFIG.COLORS.secondary }],
+                    indexAxis: 'y'
+                });
+
+                this.createOrUpdateChart('chart-canal', 'pie', {
+                    labels: Object.keys(byCanal).filter(k=>k!=='Sin asignar'),
+                    datasets: [{ data: Object.values(byCanal), backgroundColor: [CONFIG.COLORS.primary, CONFIG.COLORS.secondary, '#388E3C', '#FBC02D', '#0284C7'] }]
+                });
+            },
+
+            createOrUpdateChart(canvasId, type, dataConfig) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                if (this.charts[canvasId]) this.charts[canvasId].destroy();
+                this.charts[canvasId] = new Chart(ctx, {
+                    type: type,
+                    data: dataConfig,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        indexAxis: dataConfig.indexAxis || 'x',
+                        plugins: { legend: { display: ['doughnut','pie'].includes(type) } }
+                    }
+                });
+            },
+
+            renderTable() {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+                this.filteredData.slice(0, 100).forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="white-space:nowrap">${row.FechaFormateada}</td>
+                        <td style="color:var(--text-gray); font-size:12px">${row.Factura}</td>
+                        <td style="font-weight:500">${row.Cliente}</td>
+                        <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${row.Producto}">${row.Producto}</td>
+                        <td><span class="tag">${row.Categoria}</span></td>
+                        <td>${row.Canal}</td>
+                        <td style="text-align:center">${row._CantParsed}</td>
+                        <td style="font-weight:600; color:var(--primary); text-align:right">${row._TotalParsed.toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            groupBy(array, key, valueKey) {
+                return array.reduce((acc, item) => {
+                    const k = typeof key === 'function' ? key(item) : item[key];
+                    if(k) acc[k] = (acc[k] || 0) + (item[valueKey] || 0);
+                    return acc;
+                }, {});
+            },
+
+            animateValue(id, value, isCurrency = false) {
+                const formatted = isCurrency 
+                    ? value.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €'
+                    : value.toLocaleString('es-ES');
+                document.getElementById(id).textContent = formatted;
+            },
+
+            toggleLoader(show) { document.getElementById('loader').classList.toggle('hidden', !show); },
+
+            exportCSV() {
+                const exportData = this.filteredData.map(r => ({
+                    Fecha: r.FechaFormateada,
+                    Factura: r.Factura,
+                    Cliente: r.Cliente,
+                    Producto: r.Producto,
+                    Categoría: r.Categoria,
+                    'Canal de Venta': r.Canal,
+                    Cantidad: r._CantParsed,
+                    'Total (€)': r._TotalParsed.toString().replace('.', ',')
+                }));
+                const csv = Papa.unparse(exportData);
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); 
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `sportlead_filtrado_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            },
+            
+            refreshData() { this.init(); }
+        };
+
+        // Iniciar al cargar
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
