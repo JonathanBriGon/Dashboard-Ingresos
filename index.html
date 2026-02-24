@@ -272,9 +272,9 @@
                     </select>
                 </div>
                 <div class="input-group">
-                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Deporte:</span>
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Categoría:</span>
                     <select id="deporteFilter" onchange="app.handleFilterChange()">
-                        <option value="all">Todos los Deportes</option>
+                        <option value="all">Todos las Categorías</option>
                     </select>
                 </div>
                 <div class="input-group">
@@ -514,7 +514,7 @@
             populateFilters() {
                 const deportes = [...new Set(this.data.map(i => i.Deporte))].filter(d => d !== 'Sin asignar').sort();
                 const depSelect = document.getElementById('deporteFilter');
-                depSelect.innerHTML = '<option value="all">Todos los Deportes</option>';
+                depSelect.innerHTML = '<option value="all">Todos las Categorías</option>';
                 deportes.forEach(d => depSelect.add(new Option(d, d)));
 
                 const canales = [...new Set(this.data.map(i => i.Canal))].filter(c => c !== 'Sin asignar').sort();
@@ -706,4 +706,5 @@
     </script>
 </body>
 </html>
+
 
