@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sportlead | Executive Dashboard</title>
     
-    <!-- Fuentes: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Librerías Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 
@@ -237,7 +235,6 @@
 </head>
 <body>
 
-    <!-- LOADER -->
     <div id="loader" class="loader-overlay">
         <div class="spinner"></div>
         <p>Conectando con Google Sheets...</p>
@@ -246,7 +243,6 @@
 
     <div class="dashboard-container">
         
-        <!-- HEADER -->
         <header>
             <div class="brand">
                 <h1>
@@ -271,6 +267,14 @@
                         <option value="365">Último Año</option>
                     </select>
                 </div>
+                
+                <div class="input-group">
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Mes:</span>
+                    <select id="mesFilter" onchange="app.handleFilterChange()">
+                        <option value="all">Todos los Meses</option>
+                    </select>
+                </div>
+
                 <div class="input-group">
                     <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Categoría:</span>
                     <select id="categoriaFilter" onchange="app.handleFilterChange()">
@@ -294,7 +298,6 @@
             </div>
         </header>
 
-        <!-- KPI GRID -->
         <div class="kpi-grid">
             <div class="card">
                 <div class="kpi-title">Ingresos Totales</div>
@@ -318,7 +321,6 @@
             </div>
         </div>
 
-        <!-- CHARTS ROW 1 -->
         <div class="charts-grid">
             <div class="card col-span-8">
                 <div class="kpi-title">Tendencia de Ingresos</div>
@@ -334,7 +336,6 @@
             </div>
         </div>
 
-        <!-- CHARTS ROW 2 -->
         <div class="charts-grid">
              <div class="card col-span-4">
                 <div class="kpi-title">Top Productos (Ingresos)</div>
@@ -356,7 +357,6 @@
             </div>
         </div>
 
-        <!-- DATA TABLE -->
         <div class="table-section">
             <div class="table-header">
                 <h3 style="font-weight: 600;">Detalle de Facturación</h3>
@@ -379,8 +379,7 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <!-- JS Insertará filas aquí -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -396,8 +395,7 @@
         const CONFIG = {
             USE_MOCK_DATA: false, 
             
-            // NUEVO ENLACE: Usa la API de visualización de Google para evitar el bloqueo CORS
-            GOOGLE_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSIIpCwkUOAKuojoA9_RHpCUcCwMV9U3plRwC0BTv_6j7AsqD5z-7pcmWAZ77iUexINIMnI5y2Su38c/pub?output=csv', 
+            GOOGLE_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/1YjHY_vlHb9iD6Fhgm-TZhaSZRmClc3WndbCqOZDTQww/gviz/tq?tqx=out:csv', 
             
             COLORS: {
                 primary: '#D32F2F',
@@ -443,7 +441,6 @@
                         download: true,
                         header: true,
                         skipEmptyLines: true,
-                        // Limpia espacios en los nombres de las columnas
                         transformHeader: function(header) {
                             return header.trim();
                         },
@@ -460,7 +457,6 @@
                 });
             },
 
-            // Normalizador "Inteligente": Busca datos por palabras clave
             normalizeData(rawData) {
                 return rawData.map(row => {
                     
@@ -479,7 +475,7 @@
                         isoDate = rawFecha; 
                     }
 
-                    // PARSEO NUMÉRICO ROBUSTO (Elimina €, $, espacios y arregla comas)
+                    // PARSEO NUMÉRICO ROBUSTO
                     const parseNum = (val) => {
                         if (val === null || val === undefined || val === '') return 0;
                         if (typeof val === 'number') return val;
@@ -492,18 +488,20 @@
                         return Number(s) || 0;
                     };
 
-                    // MAPEO DE COLUMNAS
-                    const total = parseNum(findVal(['ingreso', 'total', 'importe', 'precio', '€']));
+                    // MAPEO DE COLUMNAS (Añadimos "mes")
+                    const total = parseNum(findVal(['subtotal', 'total', 'ingreso', 'importe']));
                     const cantidad = parseNum(findVal(['cantidad', 'cant', 'uds', 'unidades']));
                     const categoria = (findVal(['categoría', 'categoria', 'deporte', 'sport']) || 'Sin asignar').toString().trim();
                     const canal = (findVal(['canal', 'vía', 'origen', 'venta']) || 'Sin asignar').toString().trim();
                     const cliente = (findVal(['cliente', 'nombre', 'comprador']) || 'Desconocido').toString().trim();
                     const producto = (findVal(['producto', 'artículo', 'item']) || 'Varios').toString().trim();
                     const factura = (findVal(['factura', 'pedido', 'orden', 'id']) || '-').toString().trim();
+                    const mes = (findVal(['mes', 'month']) || 'Sin asignar').toString().trim(); // <--- NUEVA LECTURA
 
                     return {
                         FechaIso: isoDate,
                         FechaFormateada: rawFecha || '-',
+                        Mes: mes, // <--- GUARDAMOS LA VARIABLE
                         Categoria: categoria,
                         Canal: canal,
                         Cliente: cliente,
@@ -518,12 +516,17 @@
             },
 
             populateFilters() {
+                // Nuevo filtro dinámico de Meses
+                const meses = [...new Set(this.data.map(i => i.Mes))].filter(m => m !== 'Sin asignar');
+                const mesSelect = document.getElementById('mesFilter');
+                mesSelect.innerHTML = '<option value="all">Todos los Meses</option>';
+                meses.forEach(m => mesSelect.add(new Option(m, m)));
+
                 const categorias = [...new Set(this.data.map(i => i.Categoria))].filter(d => d !== 'Sin asignar').sort();
                 const catSelect = document.getElementById('categoriaFilter');
                 catSelect.innerHTML = '<option value="all">Todas las categorías</option>';
                 categorias.forEach(d => catSelect.add(new Option(d, d)));
 
-                // Nuevo filtro de producto
                 const productos = [...new Set(this.data.map(i => i.Producto))].filter(p => p !== 'Varios').sort();
                 const prodSelect = document.getElementById('productoFilter');
                 prodSelect.innerHTML = '<option value="all">Todos los Productos</option>';
@@ -537,6 +540,7 @@
 
             applyFilters() {
                 const dateRange = document.getElementById('dateRangeFilter').value;
+                const mesFilter = document.getElementById('mesFilter').value; // <--- LEER VALOR DEL NUEVO FILTRO
                 const catFilter = document.getElementById('categoriaFilter').value;
                 const prodFilter = document.getElementById('productoFilter').value;
                 const canFilter = document.getElementById('canalFilter').value;
@@ -545,7 +549,6 @@
                 
                 this.filteredData = this.data.filter(row => {
                     let dateValid = true;
-                    // Lógica para filtrar por fechas usando el "value" del HTML
                     if (dateRange !== 'all' && row.FechaIso && row.FechaIso.includes('-')) {
                         const limitDate = new Date();
                         limitDate.setDate(now.getDate() - parseInt(dateRange));
@@ -554,11 +557,13 @@
                             dateValid = rowD >= limitDate;
                         }
                     }
+                    
+                    const mesValid = mesFilter === 'all' || row.Mes === mesFilter; // <--- APLICAR LA CONDICIÓN
                     const catValid = catFilter === 'all' || row.Categoria === catFilter;
                     const prodValid = prodFilter === 'all' || row.Producto === prodFilter;
                     const canValid = canFilter === 'all' || row.Canal === canFilter;
 
-                    return dateValid && catValid && prodValid && canValid;
+                    return dateValid && mesValid && catValid && prodValid && canValid;
                 });
 
                 this.updateDashboard();
@@ -697,6 +702,7 @@
             exportCSV() {
                 const exportData = this.filteredData.map(r => ({
                     Fecha: r.FechaFormateada,
+                    Mes: r.Mes, // <--- AÑADIDO A LA EXPORTACIÓN
                     Factura: r.Factura,
                     Cliente: r.Cliente,
                     Producto: r.Producto,
