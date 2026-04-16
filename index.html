@@ -269,6 +269,13 @@
                 </div>
                 
                 <div class="input-group">
+                    <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Año:</span>
+                    <select id="anoFilter" onchange="app.handleFilterChange()">
+                        <option value="all">Todos los Años</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
                     <span style="color:var(--text-gray); font-size: 12px; margin-right: 5px;">Mes:</span>
                     <select id="mesFilter" onchange="app.handleFilterChange()">
                         <option value="all">Todos los Meses</option>
@@ -395,6 +402,7 @@
         const CONFIG = {
             USE_MOCK_DATA: false, 
             
+            // PEGA AQUÍ TU ENLACE GENERADO EN "ARCHIVO > COMPARTIR > PUBLICAR EN LA WEB (.CSV)"
             GOOGLE_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSIIpCwkUOAKuojoA9_RHpCUcCwMV9U3plRwC0BTv_6j7AsqD5z-7pcmWAZ77iUexINIMnI5y2Su38c/pub?output=csv', 
             
             COLORS: {
@@ -446,7 +454,7 @@
                         },
                         complete: (results) => {
                             if (results.errors.length > 0 && results.data.length === 0) {
-                                reject(new Error("No se pudo leer el CSV. Asegúrate de que el enlace sea público."));
+                                reject(new Error("No se pudo leer el CSV. Asegúrate de que el enlace sea de Publicar en la Web."));
                                 return;
                             }
                             this.data = this.normalizeData(results.data);
@@ -488,7 +496,7 @@
                         return Number(s) || 0;
                     };
 
-                    // MAPEO DE COLUMNAS (Añadimos "mes")
+                    // MAPEO DE COLUMNAS (Añadimos "año")
                     const total = parseNum(findVal(['subtotal', 'total', 'ingreso', 'importe']));
                     const cantidad = parseNum(findVal(['cantidad', 'cant', 'uds', 'unidades']));
                     const categoria = (findVal(['categoría', 'categoria', 'deporte', 'sport']) || 'Sin asignar').toString().trim();
@@ -496,12 +504,14 @@
                     const cliente = (findVal(['cliente', 'nombre', 'comprador']) || 'Desconocido').toString().trim();
                     const producto = (findVal(['producto', 'artículo', 'item']) || 'Varios').toString().trim();
                     const factura = (findVal(['factura', 'pedido', 'orden', 'id']) || '-').toString().trim();
-                    const mes = (findVal(['mes', 'month']) || 'Sin asignar').toString().trim(); // <--- NUEVA LECTURA
+                    const mes = (findVal(['mes', 'month']) || 'Sin asignar').toString().trim(); 
+                    const ano = (findVal(['año', 'ano', 'year']) || 'Sin asignar').toString().trim(); // <--- NUEVA LECTURA
 
                     return {
                         FechaIso: isoDate,
                         FechaFormateada: rawFecha || '-',
-                        Mes: mes, // <--- GUARDAMOS LA VARIABLE
+                        Ano: ano, // <--- GUARDAMOS LA VARIABLE AÑO
+                        Mes: mes, 
                         Categoria: categoria,
                         Canal: canal,
                         Cliente: cliente,
@@ -516,7 +526,12 @@
             },
 
             populateFilters() {
-                // Nuevo filtro dinámico de Meses
+                // Nuevo filtro dinámico de Años (ordenados de más reciente a más antiguo)
+                const anos = [...new Set(this.data.map(i => i.Ano))].filter(a => a !== 'Sin asignar').sort().reverse();
+                const anoSelect = document.getElementById('anoFilter');
+                anoSelect.innerHTML = '<option value="all">Todos los Años</option>';
+                anos.forEach(a => anoSelect.add(new Option(a, a)));
+
                 const meses = [...new Set(this.data.map(i => i.Mes))].filter(m => m !== 'Sin asignar');
                 const mesSelect = document.getElementById('mesFilter');
                 mesSelect.innerHTML = '<option value="all">Todos los Meses</option>';
@@ -540,7 +555,8 @@
 
             applyFilters() {
                 const dateRange = document.getElementById('dateRangeFilter').value;
-                const mesFilter = document.getElementById('mesFilter').value; // <--- LEER VALOR DEL NUEVO FILTRO
+                const anoFilter = document.getElementById('anoFilter').value; // <--- LEER VALOR DEL AÑO
+                const mesFilter = document.getElementById('mesFilter').value; 
                 const catFilter = document.getElementById('categoriaFilter').value;
                 const prodFilter = document.getElementById('productoFilter').value;
                 const canFilter = document.getElementById('canalFilter').value;
@@ -558,12 +574,13 @@
                         }
                     }
                     
-                    const mesValid = mesFilter === 'all' || row.Mes === mesFilter; // <--- APLICAR LA CONDICIÓN
+                    const anoValid = anoFilter === 'all' || row.Ano === anoFilter; // <--- APLICAR LA CONDICIÓN
+                    const mesValid = mesFilter === 'all' || row.Mes === mesFilter;
                     const catValid = catFilter === 'all' || row.Categoria === catFilter;
                     const prodValid = prodFilter === 'all' || row.Producto === prodFilter;
                     const canValid = canFilter === 'all' || row.Canal === canFilter;
 
-                    return dateValid && mesValid && catValid && prodValid && canValid;
+                    return dateValid && anoValid && mesValid && catValid && prodValid && canValid;
                 });
 
                 this.updateDashboard();
@@ -702,7 +719,8 @@
             exportCSV() {
                 const exportData = this.filteredData.map(r => ({
                     Fecha: r.FechaFormateada,
-                    Mes: r.Mes, // <--- AÑADIDO A LA EXPORTACIÓN
+                    Año: r.Ano, // <--- AÑADIDO A LA EXPORTACIÓN
+                    Mes: r.Mes, 
                     Factura: r.Factura,
                     Cliente: r.Cliente,
                     Producto: r.Producto,
